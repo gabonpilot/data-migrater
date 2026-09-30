@@ -110,10 +110,51 @@ public class CommonUtil {
                 response= (ResponseWrapper) restApiClient.getApi(ApiName.LATEST_ID_SCHEMA, null, "", "", ResponseWrapper.class, REFERENCE_ID);
                 latestIdSchemaMap = (HashMap<String, Object> ) response.getResponse();
             }
+            addLegacySchemaIfMissing(latestIdSchemaMap);
+            return latestIdSchemaMap;
         }
+
         return latestIdSchemaMap;
     }
+    @SuppressWarnings("unchecked")
+    private void addLegacySchemaIfMissing(HashMap<String, Object> idSchemaMap) throws IOException {
+        // MOSIP 1.3.x: no top-level "schema" (UI spec) list anymore -> rebuild it from schemaJson
+        if (idSchemaMap == null || idSchemaMap.get("schema") != null || idSchemaMap.get("schemaJson") == null)
+            return;
 
+        Map<String, Object> schemaJson = objectMapper.readValue(idSchemaMap.get("schemaJson").toString(),
+                new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> properties = (Map<String, Object>) schemaJson.get("properties");
+        Map<String, Object> identity = properties == null ? null : (Map<String, Object>) properties.get("identity");
+        Map<String, Object> fields = identity == null ? null : (Map<String, Object>) identity.get("properties");
+        if (fields == null)
+            return;
+
+        List<Map<String, Object>> schema = new ArrayList<>();
+        for (Map.Entry<String, Object> entry : fields.entrySet()) {
+            Map<String, Object> def = (Map<String, Object>) entry.getValue();
+            String ref = def.get("$ref") == null ? "" : def.get("$ref").toString();
+
+            String type;
+            if (ref.endsWith("/documentType"))
+                type = "documentType";
+            else if (ref.endsWith("/biometricsType"))
+                type = "biometricsType";
+            else if (ref.endsWith("/simpleType"))
+                type = "simpleType";
+            else
+                type = def.get("type") == null ? "string" : def.get("type").toString();
+
+            Map<String, Object> field = new HashMap<>();
+            field.put("id", entry.getKey());
+            field.put("type", type);
+            field.put("fieldCategory", def.get("fieldCategory"));
+            field.put("bioAttributes", def.get("bioAttributes") == null ? new ArrayList<>() : def.get("bioAttributes"));
+            schema.add(field);
+        }
+        idSchemaMap.put("schema", schema);
+        LOGGER.info("Built legacy 'schema' list from schemaJson with " + schema.size() + " fields");
+    }
     public void updateFieldCategory(DBImportRequest dbImportRequest) throws Exception {
         HashMap<String, Object> idSchema = getLatestIdSchema();
         HashMap<String, FieldCategory> fieldMap = new HashMap<>();
