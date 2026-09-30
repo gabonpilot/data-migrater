@@ -172,23 +172,54 @@ public class PacketCreator {
             } else if (demoDetails.containsKey(id) && demoDetails.get(id) != null) {
                 if (type.equals("documentType")) {
                     demoMap.put(id, String.valueOf(demoDetails.get(id)));
-            } else if (demoDetails.containsKey(id) && demoDetails.get(id) != null) {
-                switch (type) {
-                    case "simpleType":
-                        List<SimpleType> valList = new ArrayList<>();
-                        SimpleType simpleType = new SimpleType(primaryLamguage, demoDetails.get(id) == null ? "":demoDetails.get(id).toString());
-                        valList.add(simpleType);
-                        demoMap.put(id, mapper.writeValueAsString(valList));
-                        break;
+                } else if (demoDetails.containsKey(id) && demoDetails.get(id) != null) {
+//                switch (type) {
+//                    case "simpleType":
+//                        List<SimpleType> valList = new ArrayList<>();
+//                        SimpleType simpleType = new SimpleType(primaryLamguage, demoDetails.get(id) == null ? "":demoDetails.get(id).toString());
+//                        valList.add(simpleType);
+//                        demoMap.put(id, mapper.writeValueAsString(valList));
+//                        break;
+//
+//                    case "number":
+//
+//                    case "string" :
+//                        demoMap.put(id, demoDetails.get(id) == null ? "" : String.valueOf(demoDetails.get(id)));
+//                        break;
+//                        default:
+//                            throw new Exception("Type '" + type + "' implementation missing in setDemographic");
+//                    }
+                    //HANDLE SUPPORT
+                    switch (type) {
+                        case "simpleType":
+                            List<SimpleType> valList = new ArrayList<>();
+                            SimpleType simpleType = new SimpleType(primaryLamguage,
+                                    demoDetails.get(id) == null ? "" : demoDetails.get(id).toString());
+                            valList.add(simpleType);
+                            demoMap.put(id, mapper.writeValueAsString(valList));
+                            break;
 
-                    case "number":
+                        case "number":
+                        case "string":
+                            demoMap.put(id, demoDetails.get(id) == null ? "" : String.valueOf(demoDetails.get(id)));
+                            break;
 
-                    case "string" :
-                        demoMap.put(id, demoDetails.get(id) == null ? "" : String.valueOf(demoDetails.get(id)));
-                        break;
+                        case "array":
+                            Object value = demoDetails.get(id);
+
+                            if (value instanceof List) {
+                                demoMap.put(id, mapper.writeValueAsString(value));
+                            } else {
+                                List<Object> list = new ArrayList<>();
+                                list.add(value);
+                                demoMap.put(id, mapper.writeValueAsString(list));
+                            }
+                            break;
+
                         default:
                             throw new Exception("Type '" + type + "' implementation missing in setDemographic");
                     }
+
                 }
             } else if (required && !ignorableFields.contains(id)) {
                 throw new Exception("Mandatory Field '" + id + "' value missing");
@@ -285,7 +316,7 @@ public class PacketCreator {
                 Integer attributeCount = bioAttributes.size();
                 bioAttributes.add("unknown");
 
-                 for (Map.Entry<String, Object> entry : bioDetails.entrySet()) {
+                for (Map.Entry<String, Object> entry : bioDetails.entrySet()) {
                     String[] keyEntries = entry.getKey().split("_");
                     String fieldId = keyEntries[0];
                     String bioAttribute = keyEntries.length > 1 ? keyEntries[1] : null;
@@ -392,7 +423,7 @@ public class PacketCreator {
                                         } catch (Exception e) {
                                             e.printStackTrace();
                                             bir.getBdbInfo().getQuality().setScore(null);
-                                //            throw new Exception(trackerColumn + " Error : " + biometricType.toString() + ", " + bioAttribute + " Error Message :" + e.getLocalizedMessage());
+                                            //            throw new Exception(trackerColumn + " Error : " + biometricType.toString() + ", " + bioAttribute + " Error Message :" + e.getLocalizedMessage());
                                         }
                                     } else {
                                         bir.getBdbInfo().getQuality().setScore(0L);
@@ -427,7 +458,7 @@ public class PacketCreator {
                                 capturedMetaInfo.get(id).put(bioAttribute, new BiometricsMetaInfoDto(1, false, bir.getBdbInfo().getIndex()));
                                 bioAttributes.remove(bioAttribute);
                             }
-                       } else {
+                        } else {
                             BiometricsDto biometricDTO = new BiometricsDto(bioAttribute, null, Double.parseDouble("0"));
                             biometricDTO.setSpecVersion(bioSpecVaersion);
                             biometricDTO.setCaptured(false);
